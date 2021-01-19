@@ -1,0 +1,14 @@
+sudo apt update
+sudo apt install build-essential
+sudo apt-get install manpages-dev
+sudo apt install g++
+sudo apt-get update && sudo apt-get upgrade
+sudo apt install git
+sudo apt install build-essential checkinstall zlib1g-dev -y
+sudo apt-get install openssl
+sudo apt-get install libssl-dev
+
+
+####### install  cmake
+
+
