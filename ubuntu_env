@@ -48,6 +48,10 @@ udo apt-get install autoconf automake libtool
 sudo apt-get install libleptonica-dev
 sudo apt install libtesseract-dev
 sudo apt-get install libglu1-mesa-dev
+sudo apt-get install libgtkglext1-dev
+sudo apt install libavresample-dev
+sudo apt install flake8
+sudo apt install curl
 
 ################################ qt
 1792127108@qq.com
@@ -65,3 +69,11 @@ make install
 
 cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local -DOPENCV_EXTRA_MODULES_PATH=/home/haobai/Documents/opencv_contrib/modules -DBUILD_opencv_legacy=OFF  -D BUILD_EXAMPLES=ON  -DOPENCV_ENABLE_NONFREE:BOOL=ON ..
 
+
+##################
+sudo apt-get install libusb-1.0-0-dev
+sudo apt-get install -y libsoundio-dev
+sudo apt-get install libudev-dev
+sudo apt-get install libk4a1.4
+sudo apt-get install libk4a1.4-dev 
+sudo apt-get install -y uuid-dev
