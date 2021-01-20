@@ -123,6 +123,13 @@ rosbag play image.bag
 
 
 
+sudo apt install libglew-dev
+##### install Pangolin
+https://blog.csdn.net/baidu_38505667/article/details/108715627
+sudo apt-get install doxygen
+sudo apt-get install graphviz
+git clone https://github.com/stevenlovegrove/Pangolin.git
 
-
+##### install ros orb-slam3
+https://zhuanlan.zhihu.com/p/307423490
 
