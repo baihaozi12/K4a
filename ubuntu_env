@@ -77,3 +77,52 @@ sudo apt-get install libudev-dev
 sudo apt-get install libk4a1.4
 sudo apt-get install libk4a1.4-dev 
 sudo apt-get install -y uuid-dev
+
+
+############ depth engine
+cd libk4a1.2_1.2.0_amd64/usr/lib/x86_64-linux-gnu
+sudo cp libdepthengine.so.2.0 /usr/lib/x86_64-linux-gnu
+
+
+####################### ros
+http://wiki.ros.org/melodic/Installation/Ubuntu
+
+sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+curl -sSL 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0xC1CF6E31E6BADE8868B172B4F42ED6FBAB17C654' | sudo apt-key add
+sudo apt update
+sudo apt install ros-melodic-desktop-full
+echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+sudo apt install python-rosdep python-rosinstall python-rosinstall-generator python-wstool build-essential
+sudo apt install python-rosdep
+pip install catkin_pkg
+pip3 install catkin_pkg
+sudo rosdep init
+rosdep update
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws/
+catkin_make
+sudo apt install software-properties-common
+source ./devel/setup.bash
+
+https://answers.ros.org/question/329675/azure-kinect-ros-driver-failed-to-open-k4a-device-at-index-0/
+
+https://blog.csdn.net/zxxxiazai/article/details/108152376
+去掉运行SDK时的Root限制。
+这一步是必要的。因为Azure_Kinect_ROS_Driver 无法获取 root 权限，会报错Failed to open a K4A device. Cannot continue.。
+下载Azure-Kinect-Sensor-SDK源码，进入源码根目录中 scripts 文件夹,复制99-k4a.rules文件至 /etc/udev/rules.d/ 。
+# 新终端，启动rviz.   add -> by topic ->image 即可查看图像。
+rviz # 或 rqt_image_view 查看图像
+# 检查当前存在的Topic:
+rostopic list
+# 使用rosbag工具录制topic:
+rosbag record -O image.bag /rgb/image_raw /depth_to_rgb/image_raw
+# 回放包中数据：
+rosbag play image.bag
+
+
+
+
+
+
