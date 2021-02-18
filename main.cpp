@@ -1,462 +1,418 @@
-////
-//// Created by Zero on 2020/8/17.
-////
-//
-#include "lenz_camera.h"
 #include <iostream>
-#include <fstream>
-#include "io_utils.hpp"
-//#define STB_IMAGE_WRITE_IMPLEMENTATION
-//
 #include <stdio.h>
-#include <stdlib.h>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <algorithm>
+#include <k4a/k4a.h>
+#include <math.h>
 #include <opencv2/opencv.hpp>   // Include OpenCV API
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
-#include <k4a/k4a.h>
-#include <k4ainternal/common.h>
-
-#include "generate_ply.h"
-//
-////#include "generate_ply.h"
-////LenzCamera camera = LenzCamera();
-//
-//
-using  namespace  std;
+#include <opencv2/imgcodecs.hpp>
+//#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+//#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/viz.hpp>
+//#include <k4ainternal/common.h>
+#include <opencv2/rgbd/kinfu.hpp>
+using namespace cv;
 using namespace cv::kinfu;
-using namespace cv::io_utils;
-///*
-// multi device:
 //
-//    for (uint8_t deviceIndex = 0; deviceIndex < device_count; deviceIndex++)
-//    {
-//        if (K4A_RESULT_SUCCEEDED != k4a_device_open(deviceIndex, &device))
-//        {
-//            printf("%d: Failed to open device\n", deviceIndex);
-//            continue;
-//        }
-//
-//
-//
-//        k4a_device_close(device);
-//    }
-// */
-//
-//LenzCamera::LenzCamera() {
-//    m_deviceConfig = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-//    unsigned int deviceCount = k4a_device_get_installed_count();
-//    if (deviceCount == 0)
-//    {
-//        std::cout << "[Streaming Service] No K4A devices found" << std::endl;
-//        return;
-//    }
-//
-//    if (K4A_RESULT_SUCCEEDED != k4a_device_open(K4A_DEVICE_DEFAULT, &m_device))
-//    {
-//        std::cout << "[Streaming Service] Failed to open device" << std::endl;
-//        return;
-//    }
-//
-//    m_deviceConfig.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32; //K4A_IMAGE_FORMAT_COLOR_MJPG  K4A_IMAGE_FORMAT_COLOR_BGRA32
-////    m_deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_3072P; //K4A_COLOR_RESOLUTION_2160P K4A_COLOR_RESOLUTION_3072P
-//    m_deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_1080P;
-//    m_deviceConfig.depth_mode = K4A_DEPTH_MODE_PASSIVE_IR; //K4A_DEPTH_MODE_OFF K4A_DEPTH_MODE_NFOV_UNBINNED K4A_DEPTH_MODE_PASSIVE_IR
-//    m_deviceConfig.camera_fps = K4A_FRAMES_PER_SECOND_30; //K4A_FRAMES_PER_SECOND_30 K4A_FRAMES_PER_SECOND_15
-//
-////    m_deviceConfig.synchronized_images_only = true;
-////
-////    if (K4A_RESULT_SUCCEEDED !=  k4a_device_get_calibration(m_device, m_deviceConfig.depth_mode, m_deviceConfig.color_resolution, &calibration))
-////    {
-////        printf("Failed to get calibration\n");
-////        k4a_device_close(m_device);
-//////        return 1;
-////    }
-//    printf("init \n");
-//}
-//
-//LenzCamera::~LenzCamera() {
-//    this->stop();
-//    if (m_device != NULL)
-//    {
-//        k4a_device_close(m_device);
-//    }
-//    printf("camera dealloc\n");
-//}
-//
-//int LenzCamera::start() {
-//
-//    if (K4A_RESULT_SUCCEEDED != k4a_device_start_cameras(m_device, &m_deviceConfig))
-//    {
-//        std::cout << "[Streaming Service] Failed to start cameras" << std::endl;
-//        return - 1;
-//    }
-//
-//    //手动对焦 K4A_COLOR_CONTROL_MODE_MANUAL K4A_COLOR_CONTROL_MODE_AUTO
-//    if (K4A_RESULT_SUCCEEDED != k4a_device_set_color_control(m_device,
-//                                                             K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE,
-//                                                             K4A_COLOR_CONTROL_MODE_AUTO,
-//                                                             0))
-//    {
-//        std::cout << "[Streaming Service] Failed to set auto exposure" << std::endl;
-//        return -1;
-//    }
-//    return 0;
-//}
-//
-//int LenzCamera::stop() {
-//    if (m_device != NULL)
-//    {
-//        k4a_device_stop_cameras(m_device);
-//    }
-//    return 0;
-//}
-//
-//int LenzCamera::k4a_take(std::string (*before_save)()) {
-//    // Wait for the first capture before starting streaming.
-//    this->start();
-//    if (k4a_device_get_capture(m_device, &m_capture, 60000) != K4A_WAIT_RESULT_SUCCEEDED)
-//    {
-//        std::cerr << "[Streaming Service] Runtime error: k4a_device_get_capture() failed" << std::endl;
-//        return -1;
-//    }
-//    k4a_capture_release(m_capture);
-//
-//    uint32_t camera_fps = k4a_convert_fps_to_uint(m_deviceConfig.camera_fps);
-//    int32_t timeout_ms = HZ_TO_PERIOD_MS(camera_fps);
-//
-//    for (auto i = 0; i < 15; ++i) {
-//        switch (k4a_device_get_capture(m_device, &m_capture, timeout_ms))
-//        {
-//            case K4A_WAIT_RESULT_SUCCEEDED:
-//                break;
-//            case K4A_WAIT_RESULT_TIMEOUT:
-//                continue;
-//            case K4A_WAIT_RESULT_FAILED:
-//                continue;
-//        }
-//        k4a_device_get_capture(m_device, &m_capture, timeout_ms);
-//        k4a_capture_release(m_capture);
-//    }
-//
-//
-//    // Get the capture
-//    switch (k4a_device_get_capture(m_device, &m_capture, 60000))
-//    {
-//        case K4A_WAIT_RESULT_SUCCEEDED:
-//            break;
-//        case K4A_WAIT_RESULT_TIMEOUT:
-//            std::cout << "[Streaming Service] Timed out waiting for the capture" << std::endl;
-//            return -1;
-//        case K4A_WAIT_RESULT_FAILED:
-//            std::cout << "[Streaming Service] Failed to get the capture" << std::endl;
-//            return -1;
-//    }
-//
-//    k4a_image_t color_image = NULL;
-//    k4a_image_t depth_image = NULL; //OK
-//    color_image = k4a_capture_get_color_image(m_capture);
-//    depth_image = k4a_capture_get_depth_image(m_capture);
-//    std::cout << "[depth] " << "\n"
-//              << "format: " << k4a_image_get_format(depth_image) << "\n"
-//              << "height*width: " << k4a_image_get_height_pixels(depth_image) << ", " << k4a_image_get_width_pixels(depth_image)
-//              << std::endl;
-//    assert(color_image != NULL); // Because m_deviceConfig.synchronized_images_only == true
-//    assert(depth_image != NULL);
-//    std::string name = "/home/benebot/baihao/caputre-out.jpg";
-//    if (before_save) {
-//        name = before_save();
-//    }
-//    printf("name is %s\n",name.c_str());
-//    if (k4a_image_get_format(color_image) == K4A_IMAGE_FORMAT_COLOR_BGRA32) {
-//        cv::Mat mat = cv::Mat(k4a_image_get_height_pixels(color_image),k4a_image_get_width_pixels(color_image),CV_8UC4,k4a_image_get_buffer(color_image));
-//        cv::flip(mat, mat, 1);
-//        cv::transpose(mat, mat);
-////        memcpy(k4a_image_get_buffer(color_image),&mat.ptr<cv::Vec4b>(0)[0], mat.rows*mat.cols  *sizeof(cv::Vec4b));
-//        cv::imwrite(name, mat);
-//    }
-//
-//
-////    this->writeToFile(name.c_str(),k4a_image_get_buffer(color_image),k4a_image_get_size(color_image));
-//
-//    this->filepath = name;
-//
-//    if (color_image)
-//    {
-//        k4a_image_release(color_image);
-//    }
-//
-//    this->stop();
-//
-//    k4a_capture_release(m_capture);
-//
-//    return 0;
-//}
-//
-//int LenzCamera::writeToFile(const char *fileName, void *buffer, size_t bufferSize) {
-//
-//    assert(buffer != NULL);
-//
-//    std::ofstream hFile;
-//
-//    hFile.open(fileName, std::ios::out | std::ios::trunc | std::ios::binary);
-//
-//    if (hFile.is_open()) {
-//        hFile.write((char *) buffer, static_cast<std::streamsize>(bufferSize));
-//
-//        hFile.close();
-//
-//        std::cout << "[Streaming Service] Color frame is stored in " << fileName << std::endl;
-//
-//    } else {
-//        std::cout << "[Streaming Service] open fail in" << std::endl;
-//    }
-//}
-//
-//int main_(int argc, char * argv[])
-//{
-//    LenzCamera camera = LenzCamera();
-//
-////    LenzCamera camera;
-////    camera.start();
-//
-//    camera.k4a_take(NULL);
-//
-//    //my own code
-////    const u_int32_t device_count = k4a_device_get_installed_count();
-////    if (K4A_RESULT_SUCCEEDED !=  k4a_device_open(K4A_DEVICE_DEFAULT)){
-////        std::cout<<"open not success"<<std::endl;
-////    }
-////    k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-////    config.camera_fps = K4A_FRAMES_PER_SECOND_30;
-////    config.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
-////    config.color_resolution = K4A_COLOR_RESOLUTION_1080P;
-////    config.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
-////    config.synchronized_images_only = true;
-//
-////    k4a_device_t m_device;
-////    if (K4A_RESULT_SUCCEEDED != k4a_device_start_cameras(m_device, &config))
-////    {
-////        std::cout << "[Streaming Service] Failed to start cameras" << std::endl;
-////        return 1;
-////    }
-////    std::cout << "device ok tp load";
-//    return 0;
-//}
-//
-//
-int main_(int argc, char * argv[]) {
-    const uint32_t device_count = k4a_device_get_installed_count();
-    cout << "device count is : " << device_count << endl;
-    if (0 == device_count) {
-        std::cout << "Error: no K4A devices found. " << std::endl;
-        return EXIT_FAILURE;
-    } else {
-        std::cout << "Found " << device_count << " connected devices. " << std::endl;
+#define INVALID INT32_MIN
+typedef struct _pinhole_t
+{
+    float px;
+    float py;
+    float fx;
+    float fy;
 
-        if (1 != device_count)// 超过1个设备，也输出错误信息。
+    int width;
+    int height;
+} pinhole_t;
+
+typedef struct _coordinate_t
+{
+    int x;
+    int y;
+    float weight[4];
+} coordinate_t;
+
+typedef enum
+{
+    INTERPOLATION_NEARESTNEIGHBOR, /**< Nearest neighbor interpolation */
+    INTERPOLATION_BILINEAR,        /**< Bilinear interpolation */
+    INTERPOLATION_BILINEAR_DEPTH   /**< Bilinear interpolation with invalidation when neighbor contain invalid
+                                                data with value 0 */
+} interpolation_t;
+
+template<typename T> Mat create_mat_from_buffer(T *data, int width, int height, int channels )
+{
+    cv::Mat mat(height, width, CV_MAKETYPE(DataType<T>::type, channels));
+    memcpy(mat.data, data, width * height * channels * sizeof(T));
+    return mat;
+}
+
+// Compute a conservative bounding box on the unit plane in which all the points have valid projections
+void compute_xy_range(const k4a_calibration_t* calibration,
+                      const k4a_calibration_type_t camera,
+                      const int width,
+                      const int height,
+                      float& x_min,
+                      float& x_max,
+                      float& y_min,
+                      float& y_max)
+{
+    // Step outward from the centre point until we find the bounds of valid projection
+    const float step_u = 0.25f;
+    const float step_v = 0.25f;
+    const float min_u = 0;
+    const float min_v = 0;
+    const float max_u = (float)width - 1;
+    const float max_v = (float)height - 1;
+    const float center_u = 0.5f * width;
+    const float center_v = 0.5f * height;
+
+    int valid;
+    k4a_float2_t p;
+    k4a_float3_t ray;
+
+    // search x_min
+    for (float uv[2] = { center_u, center_v }; uv[0] >= min_u; uv[0] -= step_u)
+    {
+        p.xy.x = uv[0];
+        p.xy.y = uv[1];
+        k4a_calibration_2d_to_3d(calibration, &p, 1.f, camera, camera, &ray, &valid);
+
+        if (!valid)
         {
-            std::cout << "Error: more than one K4A devices found. " << std::endl;
-            return EXIT_FAILURE;
-        } else// 该示例代码仅限对1个设备操作
+            break;
+        }
+        x_min = ray.xyz.x;
+    }
+
+    // search x_max
+    for (float uv[2] = { center_u, center_v }; uv[0] <= max_u; uv[0] += step_u)
+    {
+        p.xy.x = uv[0];
+        p.xy.y = uv[1];
+        k4a_calibration_2d_to_3d(calibration, &p, 1.f, camera, camera, &ray, &valid);
+
+        if (!valid)
         {
-            std::cout << "Done: found 1 K4A device. " << std::endl;
+            break;
+        }
+        x_max = ray.xyz.x;
+    }
+
+    // search y_min
+    for (float uv[2] = { center_u, center_v }; uv[1] >= min_v; uv[1] -= step_v)
+    {
+        p.xy.x = uv[0];
+        p.xy.y = uv[1];
+        k4a_calibration_2d_to_3d(calibration, &p, 1.f, camera, camera, &ray, &valid);
+
+        if (!valid)
+        {
+            break;
+        }
+        y_min = ray.xyz.y;
+    }
+
+    // search y_max
+    for (float uv[2] = { center_u, center_v }; uv[1] <= max_v; uv[1] += step_v)
+    {
+        p.xy.x = uv[0];
+        p.xy.y = uv[1];
+        k4a_calibration_2d_to_3d(calibration, &p, 1.f, camera, camera, &ray, &valid);
+
+        if (!valid)
+        {
+            break;
+        }
+        y_max = ray.xyz.y;
+    }
+}
+pinhole_t create_pinhole_from_xy_range(const k4a_calibration_t* calibration, const k4a_calibration_type_t camera)
+{
+    int width = calibration->depth_camera_calibration.resolution_width;
+    int height = calibration->depth_camera_calibration.resolution_height;
+    if (camera == K4A_CALIBRATION_TYPE_COLOR)
+    {
+        width = calibration->color_camera_calibration.resolution_width;
+        height = calibration->color_camera_calibration.resolution_height;
+    }
+
+    float x_min = 0, x_max = 0, y_min = 0, y_max = 0;
+    compute_xy_range(calibration, camera, width, height, x_min, x_max, y_min, y_max);
+
+    pinhole_t pinhole;
+
+    float fx = 1.f / (x_max - x_min);
+    float fy = 1.f / (y_max - y_min);
+    float px = -x_min * fx;
+    float py = -y_min * fy;
+
+    pinhole.fx = fx * width;
+    pinhole.fy = fy * height;
+    pinhole.px = px * width;
+    pinhole.py = py * height;
+    pinhole.width = width;
+    pinhole.height = height;
+
+    return pinhole;
+}
+
+void create_undistortion_lut(const k4a_calibration_t* calibration,
+                             const k4a_calibration_type_t camera,
+                             const pinhole_t* pinhole,
+                             k4a_image_t lut,
+                             interpolation_t type)
+{
+    coordinate_t* lut_data = (coordinate_t*)(void*)k4a_image_get_buffer(lut);
+
+    k4a_float3_t ray;
+    ray.xyz.z = 1.f;
+
+    int src_width = calibration->depth_camera_calibration.resolution_width;
+    int src_height = calibration->depth_camera_calibration.resolution_height;
+    if (camera == K4A_CALIBRATION_TYPE_COLOR)
+    {
+        src_width = calibration->color_camera_calibration.resolution_width;
+        src_height = calibration->color_camera_calibration.resolution_height;
+    }
+
+    for (int y = 0, idx = 0; y < pinhole->height; y++)
+    {
+        ray.xyz.y = ((float)y - pinhole->py) / pinhole->fy;
+
+        for (int x = 0; x < pinhole->width; x++, idx++)
+        {
+            ray.xyz.x = ((float)x - pinhole->px) / pinhole->fx;
+
+            k4a_float2_t distorted;
+            int valid;
+            k4a_calibration_3d_to_2d(calibration, &ray, camera, camera, &distorted, &valid);
+
+            coordinate_t src;
+            if (type == INTERPOLATION_NEARESTNEIGHBOR)
+            {
+                // Remapping via nearest neighbor interpolation
+                src.x = (int)floorf(distorted.xy.x + 0.5f);
+                src.y = (int)floorf(distorted.xy.y + 0.5f);
+            }
+            else if (type == INTERPOLATION_BILINEAR || type == INTERPOLATION_BILINEAR_DEPTH)
+            {
+                // Remapping via bilinear interpolation
+                src.x = (int)floorf(distorted.xy.x);
+                src.y = (int)floorf(distorted.xy.y);
+            }
+            else
+            {
+                printf("Unexpected interpolation type!\n");
+                exit(-1);
+            }
+
+            if (valid && src.x >= 0 && src.x < src_width && src.y >= 0 && src.y < src_height)
+            {
+                lut_data[idx] = src;
+
+                if (type == INTERPOLATION_BILINEAR || type == INTERPOLATION_BILINEAR_DEPTH)
+                {
+                    // Compute the floating point weights, using the distance from projected point src to the
+                    // image coordinate of the upper left neighbor
+                    float w_x = distorted.xy.x - src.x;
+                    float w_y = distorted.xy.y - src.y;
+                    float w0 = (1.f - w_x) * (1.f - w_y);
+                    float w1 = w_x * (1.f - w_y);
+                    float w2 = (1.f - w_x) * w_y;
+                    float w3 = w_x * w_y;
+
+                    // Fill into lut
+                    lut_data[idx].weight[0] = w0;
+                    lut_data[idx].weight[1] = w1;
+                    lut_data[idx].weight[2] = w2;
+                    lut_data[idx].weight[3] = w3;
+                }
+            }
+            else
+            {
+                lut_data[idx].x = INVALID;
+                lut_data[idx].y = INVALID;
+            }
         }
     }
-    // 打开（默认）设备
-    k4a_device_t device;
-    if (K4A_RESULT_SUCCEEDED != k4a_device_open(K4A_DEVICE_DEFAULT, &device)) {
-        std::cout << "[Streaming Service] Failed to open device" << std::endl;
-        return 1;
-    }
-    std::cout << "Done: open device. " << std::endl;
-
-    /*
-		检索 Azure Kinect 图像数据
-	*/
-    // 配置并启动设备
-    k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-    config.camera_fps = K4A_FRAMES_PER_SECOND_30;
-    config.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
-    config.color_resolution = K4A_COLOR_RESOLUTION_1080P;
-    // config.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
-    config.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
-    config.synchronized_images_only = true;// ensures that depth and color images are both available in the capture
-    std::cout << "Done:config setting. " << std::endl;
-
-    if (K4A_RESULT_SUCCEEDED != k4a_device_start_cameras(device, &config)) {
-        std::cout << "[Streaming Service] Failed to start cameras" << std::endl;
-        return -1;
-    }
-    std::cout << "Done:camera start . " << std::endl;
-
-    // 稳定化
-    k4a_capture_t capture;
-    int iAuto = 0;//用来稳定，类似自动曝光
-    int iAutoError = 0;// 统计自动曝光的失败次数
-    if (k4a_device_get_capture(device, &capture, 60000) != K4A_WAIT_RESULT_SUCCEEDED) {
-        std::cout << iAuto << ". Capture several frames to give auto-exposure" << std::endl;
-
-    }
-//    while (true) {
-//        if (k4a_device_get_capture(device, &capture, 60000) != K4A_WAIT_RESULT_SUCCEEDED) {
-//            std::cout << iAuto << ". Capture several frames to give auto-exposure" << std::endl;
-//
-//            // 跳过前 n 个（成功的数据采集）循环，用来稳定
-//            if (iAuto != 30) {
-//                iAuto++;
-//                continue;
-//            } else {
-//                std::cout << "Done: auto-exposure" << std::endl;
-//                break;// 跳出该循环，完成相机的稳定过程
-//            }
-//        }else
-//        {
-//            std::cout << iAutoError << ". K4A_WAIT_RESULT_TIMEOUT." << std::endl;
-//            if (iAutoError != 30)
-//            {
-//                iAutoError++;
-//                continue;
-//            }
-//            else
-//            {
-//                std::cout << "Error: failed to give auto-exposure. " << std::endl;
-//                return EXIT_FAILURE;
-//            }
-//        }
-//
-//
-//    }
-    // 从设备获取捕获
-    k4a_image_t rgbImage;
-    k4a_image_t depthImage;
-    k4a_image_t irImage;
-
-    cv::Mat cv_rgbImage_with_alpha;
-    cv::Mat cv_rgbImage_no_alpha;
-    cv::Mat cv_depth;
-    cv::Mat cv_depth_8U;
-    cv::Mat cv_irImage;
-    cv::Mat cv_irImage_8U;
-
-    rgbImage = k4a_capture_get_color_image(capture);
-    depthImage = k4a_capture_get_depth_image(capture);
-    std::cout << "[depth] " << "\n"
-              << "format: " << k4a_image_get_format(depthImage) << "\n"
-              << "height*width: " << k4a_image_get_height_pixels(depthImage) << ", " << k4a_image_get_width_pixels(depthImage)
-              << std::endl;
-    cv_depth = cv::Mat(k4a_image_get_height_pixels(depthImage),k4a_image_get_width_pixels(depthImage),CV_16U,k4a_image_get_buffer(depthImage), static_cast<size_t>(k4a_image_get_stride_bytes(depthImage)));
-    cv::flip(cv_depth, cv_depth, 1);
-
-    cv::transpose(cv_depth, cv_depth);
-    cv_depth.convertTo(cv_depth_8U, CV_8U, 1 );
-//        memcpy(k4a_image_get_buffer(color_image),&mat.ptr<cv::Vec4b>(0)[0], mat.rows*mat.cols  *sizeof(cv::Vec4b));
-    std::string name = "/home/benebot/baihao/depth_image.jpg";
-    cv::imwrite(name, cv_depth_8U);
-
-    // ir
-    irImage = k4a_capture_get_ir_image(capture);
-    std::cout << "[ir] " << "\n"
-              << "format: " << k4a_image_get_format(irImage) << "\n"
-              << "height*width: " << k4a_image_get_height_pixels(irImage) << ", " << k4a_image_get_width_pixels(irImage)
-              << std::endl;
-    cv_irImage = cv::Mat(k4a_image_get_height_pixels(irImage), k4a_image_get_width_pixels(irImage), CV_16U, (void *)k4a_image_get_buffer(depthImage), static_cast<size_t>(k4a_image_get_stride_bytes(depthImage)));
-    cv_irImage.convertTo(cv_irImage_8U, CV_8U, 1 );
-    name = "/home/benebot/baihao/ir_image.jpg";
-    cv::imwrite(name, cv_depth_8U);
-
-
-    // get point cloud
-    k4a_calibration_t calibration;
-//    k4a_device_get_calibration(device, config.depth_mode, config.color_resolution, &calibration));
-
-    k4a_device_get_calibration(device, config.depth_mode, config.color_resolution, &calibration);
-//    k4a_transformation_t transformation = k4a_transformation_create(calibration);
-    k4a_transformation_t transformation;
-
-
-//    k4a_transformation_depth_image_to_point_cloud()
-    k4a_image_t xyzImage;
-    cv::Mat cv_xyzImage;
-    cv::Mat cv_xyzImage_32F;
-
-
-// 点云
-/*
-	Each pixel of the xyz_image consists of three int16_t values, totaling 6 bytes. The three int16_t values are the X, Y, and Z values of the point.
-	我们将为每个像素存储三个带符号的 16 位坐标值（以毫米为单位）。 因此，XYZ 图像步幅设置为 width * 3 * sizeof(int16_t)。
-	数据顺序为像素交错式，即，X 坐标 – 像素 0，Y 坐标 – 像素 0，Z 坐标 – 像素 0，X 坐标 – 像素 1，依此类推。
-	如果无法将某个像素转换为 3D，该函数将为该像素分配值 [0,0,0]。
-*/
-//    k4a_transformation_depth_image_to_point_cloud(transformation, depthImage, K4A_CALIBRATION_TYPE_DEPTH, xyzImage);
-
-
-    rgbImage = k4a_capture_get_color_image(capture);
-    cv::Mat mat = cv::Mat(k4a_image_get_height_pixels(rgbImage),k4a_image_get_width_pixels(rgbImage),CV_8UC4,k4a_image_get_buffer(rgbImage));
-    cv::flip(mat, mat, 1);
-    cv::transpose(mat, mat);
-    name = "/home/benebot/baihao/rgb_image.jpg";
-//        memcpy(k4a_image_get_buffer(color_image),&mat.ptr<cv::Vec4b>(0)[0], mat.rows*mat.cols  *sizeof(cv::Vec4b));
-    cv::imwrite(name, mat);
-
-    printf(CV_VERSION);
-
-    // Generate a pinhole model for depth camera
-//    pinhole_t pinhole = create_pinhole_from_xy_range(&calibration, K4A_CALIBRATION_TYPE_DEPTH);
-    pinhole_t pinhole = create_pinhole_from_xy_range(&calibration, K4A_CALIBRATION_TYPE_DEPTH);
-    interpolation_t interpolation_type = INTERPOLATION_BILINEAR_DEPTH;
-    // Retrieve calibration parameters
-    k4a_calibration_intrinsic_parameters_t *intrinsics = &calibration.depth_camera_calibration.intrinsics.parameters;
-    const int width = calibration.depth_camera_calibration.resolution_width;
-    const int height = calibration.depth_camera_calibration.resolution_height;
-
-    // Initialize kinfu parameters
-    Ptr<kinfu::Params> params;
-    params = kinfu::Params::defaultParams();
-    initialize_kinfu_params(
-            *params, width, height, pinhole.fx, pinhole.fy, pinhole.px, pinhole.py);
-
-    // Distortion coefficients
-    Matx<float, 1, 8> distCoeffs;
-    distCoeffs(0) = intrinsics->param.k1;
-    distCoeffs(1) = intrinsics->param.k2;
-    distCoeffs(2) = intrinsics->param.p1;
-    distCoeffs(3) = intrinsics->param.p2;
-    distCoeffs(4) = intrinsics->param.k3;
-    distCoeffs(5) = intrinsics->param.k4;
-    distCoeffs(6) = intrinsics->param.k5;
-    distCoeffs(7) = intrinsics->param.k6;
-
-    k4a_image_t lut = NULL;
-    k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM,
-                     pinhole.width,
-                     pinhole.height,
-                     pinhole.width * (int)sizeof(coordinate_t),
-                     &lut);
-
-    create_undistortion_lut(&calibration, K4A_CALIBRATION_TYPE_DEPTH, &pinhole, lut, interpolation_type);
-    // Create KinectFusion module instance
-    Ptr<kinfu::KinFu> kf;
-    kf = kinfu::KinFu::create(params);
-
-    k4a_image_t undistorted_depth_image = NULL;
-    k4a_image_create(K4A_IMAGE_FORMAT_DEPTH16,
-                     pinhole.width,
-                     pinhole.height,
-                     pinhole.width * (int)sizeof(uint16_t),
-                     &undistorted_depth_image);
-    remap(depthImage, lut, undistorted_depth_image, interpolation_type);
-
-    // Create frame from depth buffer
-    uint8_t *buffer = k4a_image_get_buffer(undistorted_depth_image);
-    uint16_t *depth_buffer = reinterpret_cast<uint16_t *>(buffer);
-    UMat undistortedFrame;
-//    create_mat_from_buffer<uint16_t>(depth_buffer, width, height).copyTo(undistortedFrame);
-    cout<<"depth_buffer is : "<<depth_buffer<<endl;
-    name = "/home/benebot/baihao/undistorted_depth_image.jpg";
-//        memcpy(k4a_image_get_buffer(color_image),&mat.ptr<cv::Vec4b>(0)[0], mat.rows*mat.cols  *sizeof(cv::Vec4b));
-//    cv::imwrite(name, undistorted_depth_image);
 }
-int main_OK(int argc, char * argv[]) {
+
+void remap(const k4a_image_t src, const k4a_image_t lut, k4a_image_t dst, interpolation_t type)
+{
+    int src_width = k4a_image_get_width_pixels(src);
+    int dst_width = k4a_image_get_width_pixels(dst);
+    int dst_height = k4a_image_get_height_pixels(dst);
+
+    uint16_t* src_data = (uint16_t*)(void*)k4a_image_get_buffer(src);
+    uint16_t* dst_data = (uint16_t*)(void*)k4a_image_get_buffer(dst);
+    coordinate_t* lut_data = (coordinate_t*)(void*)k4a_image_get_buffer(lut);
+
+    memset(dst_data, 0, (size_t)dst_width * (size_t)dst_height * sizeof(uint16_t));
+
+    for (int i = 0; i < dst_width * dst_height; i++)
+    {
+        if (lut_data[i].x != INVALID && lut_data[i].y != INVALID)
+        {
+            if (type == INTERPOLATION_NEARESTNEIGHBOR)
+            {
+                dst_data[i] = src_data[lut_data[i].y * src_width + lut_data[i].x];
+            }
+            else if (type == INTERPOLATION_BILINEAR || type == INTERPOLATION_BILINEAR_DEPTH)
+            {
+                const uint16_t neighbors[4]{ src_data[lut_data[i].y * src_width + lut_data[i].x],
+                                             src_data[lut_data[i].y * src_width + lut_data[i].x + 1],
+                                             src_data[(lut_data[i].y + 1) * src_width + lut_data[i].x],
+                                             src_data[(lut_data[i].y + 1) * src_width + lut_data[i].x + 1] };
+
+                // If the image contains invalid data, e.g. depth image contains value 0, ignore the bilinear
+                // interpolation for current target pixel if one of the neighbors contains invalid data to avoid
+                // introduce noise on the edge. If the image is color or ir images, user should use
+                // INTERPOLATION_BILINEAR
+                if (type == INTERPOLATION_BILINEAR_DEPTH)
+                {
+                    // If the image contains invalid data, e.g. depth image contains value 0, ignore the bilinear
+                    // interpolation for current target pixel if one of the neighbors contains invalid data to avoid
+                    // introduce noise on the edge. If the image is color or ir images, user should use
+                    // INTERPOLATION_BILINEAR
+                    if (neighbors[0] == 0 || neighbors[1] == 0 || neighbors[2] == 0 || neighbors[3] == 0)
+                    {
+                        continue;
+                    }
+
+                    // Ignore interpolation at large depth discontinuity without disrupting slanted surface
+                    // Skip interpolation threshold is estimated based on the following logic:
+                    // - angle between two pixels is: theta = 0.234375 degree (120 degree / 512) in binning resolution
+                    // mode
+                    // - distance between two pixels at same depth approximately is: A ~= sin(theta) * depth
+                    // - distance between two pixels at highly slanted surface (e.g. alpha = 85 degree) is: B = A /
+                    // cos(alpha)
+                    // - skip_interpolation_ratio ~= sin(theta) / cos(alpha)
+                    // We use B as the threshold that to skip interpolation if the depth difference in the triangle is
+                    // larger than B. This is a conservative threshold to estimate largest distance on a highly slanted
+                    // surface at given depth, in reality, given distortion, distance, resolution difference, B can be
+                    // smaller
+                    const float skip_interpolation_ratio = 0.04693441759f;
+                    float depth_min = min(min(neighbors[0], neighbors[1]), min(neighbors[2], neighbors[3]));
+                    float depth_max = max(max(neighbors[0], neighbors[1]), max(neighbors[2], neighbors[3]));
+                    float depth_delta = depth_max - depth_min;
+                    float skip_interpolation_threshold = skip_interpolation_ratio * depth_min;
+                    if (depth_delta > skip_interpolation_threshold)
+                    {
+                        continue;
+                    }
+                }
+
+                dst_data[i] = (uint16_t)(neighbors[0] * lut_data[i].weight[0] + neighbors[1] * lut_data[i].weight[1] +
+                                         neighbors[2] * lut_data[i].weight[2] + neighbors[3] * lut_data[i].weight[3] +
+                                         0.5f);
+            }
+            else
+            {
+                printf("Unexpected interpolation type!\n");
+                exit(-1);
+            }
+        }
+    }
+}
+
+void PrintUsage()
+{
+    printf("Usage: kinfu_example.exe [Optional]<Mode>\n");
+    printf("    Mode: nfov_unbinned(default), wfov_2x2binned, wfov_unbinned, nfov_2x2binned\n");
+    printf("    Keys:   q - Quit\n");
+    printf("            r - Reset KinFu\n");
+    printf("            v - Enable Viz Render Cloud (default is OFF, enable it will slow down frame rate)\n");
+    printf("            w - Write out the kf_output.ply point cloud file in the running folder\n");
+    printf("    * Please ensure to uncomment HAVE_OPENCV pound define to enable the opencv code that runs kinfu\n");
+    printf("    * Please ensure to copy opencv/opencv_contrib/vtk dlls to the running folder\n\n");
+}
+void initialize_kinfu_params(cv::kinfu::Params &params,
+                             const int width,
+                             const int height,
+                             const float fx,
+                             const float fy,
+                             const float cx,
+                             const float cy)
+{
+    const Matx33f camera_matrix = Matx33f(fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1.0f);
+    params.frameSize = Size(width, height);
+    params.intr = camera_matrix;
+    params.depthFactor = 1000.0f;
+}
+
+
+int _stricmp(const char *a, const char *b) {
+    int ca, cb;
+    do {
+        ca = (unsigned char) *a++;
+        cb = (unsigned char) *b++;
+        ca = tolower(toupper(ca));
+        cb = tolower(toupper(cb));
+    } while (ca == cb && ca != '\0');
+    return ca - cb;
+}
+
+
+Mat decof(Mat image,double k1, double k2,double k3,double k4,double k5,
+          double k6,double p1,double p2,double cx,double cy){
+    // 畸变参数
+//    double k1 = 0.197412, k2 = -2.37519, p1 = 0.000679696, p2 = -0.000651019;
+//// 内参
+    double fx = 605.465, fy = 605.431;
+    int rows = image.rows, cols = image.cols;
+    cv::Mat    image_undistort = cv::Mat(rows, cols, CV_8UC4);   // 去畸变以后的图
+
+// 计算去畸变后图像的内容
+    for (int v = 0; v < rows; v++)
+        for (int u = 0; u < cols; u++) {
+
+            double u_distorted = 0, v_distorted = 0;
+            // TODO 按照公式，计算点(u,v)对应到畸变图像中的坐标(u_distorted, v_distorted) (~6 lines)
+            // start your code here
+            //image_undistort中含有非畸变的图像坐标
+            //将image_undistort的坐标通过内参转换到归一化坐标系下，此时得到的归一化坐标是对的
+            //将得到的归一化坐标系进行畸变处理
+            //将畸变处理后的坐标通过内参转换为图像坐标系下的坐标
+            //这样就相当于是在非畸变图像的图像坐标和畸变图像的图像坐标之间建立了一个对应关系
+            //相当于是非畸变图像坐标在畸变图像中找到了映射
+            //对畸变图像进行遍历之后，然后赋值（一般需要线性插值，因为畸变后图像的坐标不一定是整数的），即可得到矫正之后的图像
+            double x1,y1,x2,y2;
+            x1 = (u-cx)/fx;
+            y1 = (v-cy)/fy;
+            double r2;
+            r2 = pow(x1,2)+pow(y1,2);
+            x2  = x1*(1+k1*r2+k2*pow(r2,2))+2*p1*x1*y1+p2*(r2+2*x1*x1);
+            y2 = y1*(1+k1*r2+k2*pow(r2,2))+p1*(r2+2*y1*y1)+2*p2*x1*y1;
+
+            u_distorted = fx*x2+cx;
+            v_distorted = fy*y2+cy;
+
+            // end your code here
+
+            // 赋值 (最近邻插值)
+            if (u_distorted >= 0 && v_distorted >= 0 && u_distorted < cols && v_distorted < rows) {
+                image_undistort.at<uchar>(v, u) = image.at<uchar>((int) v_distorted, (int) u_distorted);
+            } else {
+                image_undistort.at<uchar>(v, u) = 0;
+            }
+        }
+
+// 画图去畸变后图像
+//    cv::imshow("image undistorted", image_undistort);
+//    cv::waitKey();
+
+    return image_undistort;
+}
+
+int main(int argc, char * argv[]) {
     k4a_device_t device = NULL;
     // Configure the depth mode and fps
     k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
@@ -508,7 +464,20 @@ int main_OK(int argc, char * argv[]) {
     k4a_calibration_intrinsic_parameters_t *intrinsics = &calibration.depth_camera_calibration.intrinsics.parameters;
     const int width = calibration.depth_camera_calibration.resolution_width;
     const int height = calibration.depth_camera_calibration.resolution_height;
+    float k1 = intrinsics->param.k1;
+    float k2 = intrinsics->param.k2;
+    float k3 = intrinsics->param.k3;
+    float k4 = intrinsics->param.k4;
+    float k5 = intrinsics->param.k5;
+    float k6 = intrinsics->param.k6;
 
+    float cx = intrinsics->param.cx;
+    float cy = intrinsics->param.cy;
+
+    float p1 = intrinsics->param.p1;
+    float p2 = intrinsics->param.p2;
+    float codx = intrinsics->param.codx;
+    float cody = intrinsics->param.cody;
     // Initialize kinfu parameters
     Ptr<kinfu::Params> params;
     params = kinfu::Params::defaultParams();
@@ -527,13 +496,13 @@ int main_OK(int argc, char * argv[]) {
 //    std::string recordPath = "/home/benebot/baihao/recordPath";
 //    if(!recordPath.empty())
 //        depthWriter = makePtr<DepthWriter>(recordPath);
-#ifdef HAVE_OPENCV_VIZ
-    cout<<"we have we have we have"<<endl;
-    const std::string vizWindowName = "cloud";
-    cv::viz::Viz3d window(vizWindowName);
-    window.setViewerPose(Affine3f::Identity());
-    bool pause = false;
-#endif
+//#ifdef HAVE_OPENCV_VIZ
+//    cout<<"we have we have we have"<<endl;
+//    const std::string vizWindowName = "cloud";
+//    cv::viz::Viz3d window(vizWindowName);
+//    window.setViewerPose(Affine3f::Identity());
+//    bool pause = false;
+//#endif
 
     initialize_kinfu_params(*params, width, height, pinhole.fx, pinhole.fy, pinhole.px, pinhole.py);
 // Distortion coefficients
@@ -615,9 +584,10 @@ int main_OK(int argc, char * argv[]) {
         UMat undistortedFrame;
 //        create_mat_from_buffer<uint16_t>(depth_buffer, width, height, 1).copyTo(undistortedFrame);
         Mat cv_depth = cv::Mat(k4a_image_get_height_pixels(depth_image),k4a_image_get_width_pixels(depth_image),CV_16U,k4a_image_get_buffer(depth_image), static_cast<size_t>(k4a_image_get_stride_bytes(depth_image)));
-        std::string name = "/home/benebot/baihao/rgb_image.jpg";
+        std::string name = "/home/haobai/Desktop/capturedimage/rgb_image.png";
 //        memcpy(k4a_image_get_buffer(color_image),&mat.ptr<cv::Vec4b>(0)[0], mat.rows*mat.cols  *sizeof(cv::Vec4b));
-        Mat cv_rgb = cv::Mat(k4a_image_get_height_pixels(rgbImage),k4a_image_get_width_pixels(rgbImage),CV_32F,k4a_image_get_buffer(rgbImage), static_cast<size_t>(k4a_image_get_stride_bytes(rgbImage)));
+        Mat cv_rgb = cv::Mat(k4a_image_get_height_pixels(rgbImage),k4a_image_get_width_pixels(rgbImage),CV_8UC4,k4a_image_get_buffer(rgbImage), static_cast<size_t>(k4a_image_get_stride_bytes(rgbImage)));
+//        cv_rgb = decof(cv_rgb, k1,k2,k3,k4,k5,k6,p1,p2,codx,cody);
         cv::imwrite(name, cv_rgb);
         cv_depth.copyTo(undistortedFrame);
         if (undistortedFrame.empty())
@@ -678,7 +648,7 @@ int main_OK(int argc, char * argv[]) {
             {
                 renderViz = true;
             }
-            else if (key == 'w' or count == 200) {
+            else if (key == 'w' or count == 1) {
 
                 printf("Saving fused point cloud into ply file ...\n");
                 Mat out_points;
@@ -689,27 +659,27 @@ int main_OK(int argc, char * argv[]) {
 #define PLY_END_HEADER "end_header"
 #define PLY_ASCII "format ascii 1.0"
 #define PLY_ELEMENT_VERTEX "element vertex"
-                string output_file_name = "/home/benebot/baihao/kf_output.ply";
-                ofstream ofs(output_file_name); // text mode first
-                ofs << PLY_START_HEADER << endl;
-                ofs << PLY_ASCII << endl;
-                ofs << PLY_ELEMENT_VERTEX << " " << out_points.rows << endl;
-                ofs << "property float x" << endl;
-                ofs << "property float y" << endl;
-                ofs << "property float z" << endl;
-                ofs << "property float nx" << endl;
-                ofs << "property float ny" << endl;
-                ofs << "property float nz" << endl;
+                std::string output_file_name = "/home/haobai/Desktop/capturedimage/kf_output.ply";
+                std::ofstream ofs(output_file_name); // text mode first
+                ofs << PLY_START_HEADER << std::endl;
+                ofs << PLY_ASCII << std::endl;
+                ofs << PLY_ELEMENT_VERTEX << " " << out_points.rows << std::endl;
+                ofs << "property float x" << std::endl;
+                ofs << "property float y" << std::endl;
+                ofs << "property float z" << std::endl;
+                ofs << "property float nx" << std::endl;
+                ofs << "property float ny" << std::endl;
+                ofs << "property float nz" << std::endl;
 
                 //            // add by my self
                 //            ofs << "property uchar red" << endl;
                 //            ofs << "property uchar green" << endl;
                 //            ofs << "property float blue" << endl;
 
-                ofs << PLY_END_HEADER << endl;
+                ofs << PLY_END_HEADER << std::endl;
                 ofs.close();
 
-                stringstream ss;
+                std::stringstream ss;
                 //            cout<< " rgb "<< out_points.at<float>(0, 1)<<endl;
                 for (int i = 0; i < out_points.rows; ++i) {
                     //  can use
@@ -718,7 +688,7 @@ int main_OK(int argc, char * argv[]) {
                        << out_points.at<float>(i, 2) << " "
                        << out_normals.at<float>(i, 0) << " "
                        << out_normals.at<float>(i, 1) << " "
-                       << out_normals.at<float>(i, 2) << endl;
+                       << out_normals.at<float>(i, 2) << std::endl;
 
                     // add by my self
                     //                ss << out_points.at<float>(i, 0) << " "
@@ -733,66 +703,9 @@ int main_OK(int argc, char * argv[]) {
                 }
 
 
-                ofstream ofs_text(output_file_name, ios::out | ios::app);
-                ofs_text.write(ss.str().c_str(), (streamsize) ss.str().length());
+                std::ofstream ofs_text(output_file_name, std::ios::out | std::ios::app);
+                ofs_text.write(ss.str().c_str(), (std::streamsize) ss.str().length());
 
-
-                // another way
-                //            int depthimage_width = k4a_image_get_width_pixels(depth_image);
-                //            int depthimage_height = k4a_image_get_height_pixels(depth_image);
-                //
-                //            k4a_image_t transformation_color_image;
-                //            cout << k4a_image_get_format(rgbImage) << endl;
-                //            k4a_image_create(K4A_IMAGE_FORMAT_COLOR_BGRA32,
-                //                             depthimage_width,
-                //                             depthimage_height,
-                //                             depthimage_width * 4 * (int)sizeof(uint8_t), &transformation_color_image);
-                //            k4a_transformation_color_image_to_depth_camera(transformation, depth_image, rgbImage, transformation_color_image);
-                //
-                //            k4a_image_t point_cloud;
-                //            k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM, depthimage_width, depthimage_height, depthimage_width * 3 * (int)sizeof(uint16_t), &point_cloud);
-                //            k4a_transformation_depth_image_to_point_cloud(transformation, depth_image, K4A_CALIBRATION_TYPE_DEPTH, point_cloud);
-                //
-                //
-                ////            vector<color_point_t> points;
-                //
-                //            int width = k4a_image_get_width_pixels(point_cloud);
-                //            int height = k4a_image_get_height_pixels(point_cloud);
-                //            int16_t *point_cloud_image_data = (int16_t *)(void *)k4a_image_get_buffer(point_cloud);
-                //            uint8_t *color_image_data = k4a_image_get_buffer(rgbImage);
-                //
-                //            for (int i = 0; i < width * height; i++)
-                //            {
-                ////                color_point_t point;
-                ////                point.xyz[0] = point_cloud_image_data[3 * i + 0];
-                ////                point.xyz[1] = point_cloud_image_data[3 * i + 1];
-                ////                point.xyz[2] = point_cloud_image_data[3 * i + 2];
-                ////                if (point.xyz[2] == 0 ||point.xyz[2]>maxValue*0.3)
-                ////                    continue;
-                ////                point.bgr[0] = color_image_data[4 * i + 0];
-                ////                point.bgr[1] = color_image_data[4 * i + 1];
-                ////                point.bgr[2] = color_image_data[4 * i + 2];
-                ////                uint8_t alpha = color_image_data[4 * i + 3];
-                ////                if (point.bgr[0] == 0 && point.bgr[1] == 0 && point.bgr[2] == 0 && alpha == 0)
-                ////                    continue;
-                ////                points.push_back(point);
-                //
-                //                ss << point_cloud_image_data[3 * i + 0] << " "
-                //                   << point_cloud_image_data[3 * i + 1] << " "
-                //                   << point_cloud_image_data[3 * i + 2] << " "
-                //                   << out_normals.at<float>(i, 0) << " "
-                //                   << out_normals.at<float>(i, 1) << " "
-                //                   << out_normals.at<float>(i, 2) << " "
-                //
-                ////                        << color_image_data[4 * i + 0] << " "
-                ////                        << color_image_data[4 * i + 1] << " "
-                ////                        << color_image_data[4 * i + 2] << " "
-                //                   <<endl;
-                //            }
-
-//                viz::WCloud cloudWidget(points, viz::Color::white());
-//                viz::WCloudNormals cloudNormals(points, normals, /*level*/1, /*scale*/0.05, viz::Color::gray());
-                //            Vec3d volSize = kf->getParams().voxelSize*Vec3d(kf->getParams().volumeDims);
                 stop = true;
                 break;
             }
@@ -814,330 +727,6 @@ int main_OK(int argc, char * argv[]) {
         count++;
 //        break;
     }
-
-    return 0;
-}
-
-template<typename T> Mat create_mat_from_buffer(T *data, int width, int height, int channels = 1)
-{
-    Mat mat(height, width, CV_MAKETYPE(DataType<T>::type, channels));
-    memcpy(mat.data, data, width * height * channels * sizeof(T));
-    return mat;
-}
-
-int main(int argc, char** argv)
-{
-//    PrintUsage();
-
-    k4a_device_t device = NULL;
-
-    if (argc > 2)
-    {
-        printf("Please read the Usage\n");
-        return 2;
-    }
-
-    // Configure the depth mode and fps
-    k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-    config.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
-    config.camera_fps = K4A_FRAMES_PER_SECOND_30;
-    config.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
-    config.color_resolution = K4A_COLOR_RESOLUTION_1080P;
-    config.synchronized_images_only = true;
-    uint32_t device_count = k4a_device_get_installed_count();
-    if (device_count == 0)
-    {
-        printf("No K4A devices found\n");
-        return 1;
-    }
-    if (argc == 2)
-    {
-        if (!_stricmp(argv[1], "nfov_unbinned"))
-        {
-            config.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
-        }
-        else if (!_stricmp(argv[1], "wfov_2x2binned"))
-        {
-            config.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
-        }
-        else if (!_stricmp(argv[1], "wfov_unbinned"))
-        {
-            config.depth_mode = K4A_DEPTH_MODE_WFOV_UNBINNED;
-            config.camera_fps = K4A_FRAMES_PER_SECOND_15;
-        }
-        else if (!_stricmp(argv[1], "nfov_2x2binned"))
-        {
-            config.depth_mode = K4A_DEPTH_MODE_NFOV_2X2BINNED;
-        }
-        else if (!_stricmp(argv[1], "/?"))
-        {
-            return 0;
-        }
-        else
-        {
-            printf("Depth mode not supported!\n");
-            return 1;
-        }
-    }
-
-//    uint32_t device_count = k4a_device_get_installed_count();
-
-    if (device_count == 0)
-    {
-        printf("No K4A devices found\n");
-        return 1;
-    }
-
-    printf("set config OK \n");
-    if (K4A_RESULT_SUCCEEDED != k4a_device_open(K4A_DEVICE_DEFAULT, &device))
-    {
-        printf("Failed to open device\n");
-        k4a_device_close(device);
-        return 1;
-    }
-
-    // Retrive calibration
-    k4a_calibration_t calibration;
-    if (K4A_RESULT_SUCCEEDED !=
-        k4a_device_get_calibration(device, config.depth_mode, config.color_resolution, &calibration))
-    {
-        printf("Failed to get calibration\n");
-        k4a_device_close(device);
-        return 1;
-    }
-
-    // Start cameras
-    if (K4A_RESULT_SUCCEEDED != k4a_device_start_cameras(device, &config))
-    {
-        printf("Failed to start device\n");
-        k4a_device_close(device);
-        return 1;
-    }
-    printf("here here here \n");
-    // Generate a pinhole model for depth camera
-    pinhole_t pinhole = create_pinhole_from_xy_range(&calibration, K4A_CALIBRATION_TYPE_DEPTH);
-    interpolation_t interpolation_type = INTERPOLATION_BILINEAR_DEPTH;
-
-//#ifdef HAVE_OPENCV
-    setUseOptimized(true);
-
-    // Retrieve calibration parameters
-    k4a_calibration_intrinsic_parameters_t *intrinsics = &calibration.depth_camera_calibration.intrinsics.parameters;
-    const int width = calibration.depth_camera_calibration.resolution_width;
-    const int height = calibration.depth_camera_calibration.resolution_height;
-
-    // Initialize kinfu parameters
-    Ptr<kinfu::Params> params;
-    params = kinfu::Params::defaultParams();
-    initialize_kinfu_params(
-            *params, width, height, pinhole.fx, pinhole.fy, pinhole.px, pinhole.py);
-
-    // Distortion coefficients
-    Matx<float, 1, 8> distCoeffs;
-    distCoeffs(0) = intrinsics->param.k1;
-    distCoeffs(1) = intrinsics->param.k2;
-    distCoeffs(2) = intrinsics->param.p1;
-    distCoeffs(3) = intrinsics->param.p2;
-    distCoeffs(4) = intrinsics->param.k3;
-    distCoeffs(5) = intrinsics->param.k4;
-    distCoeffs(6) = intrinsics->param.k5;
-    distCoeffs(7) = intrinsics->param.k6;
-
-    k4a_image_t lut = NULL;
-    k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM,
-                     pinhole.width,
-                     pinhole.height,
-                     pinhole.width * (int)sizeof(coordinate_t),
-                     &lut);
-
-    create_undistortion_lut(&calibration, K4A_CALIBRATION_TYPE_DEPTH, &pinhole, lut, interpolation_type);
-
-    // Create KinectFusion module instance
-    Ptr<kinfu::KinFu> kf;
-    kf = kinfu::KinFu::create(params);
-    namedWindow("AzureKinect KinectFusion Example");
-    viz::Viz3d visualization("AzureKinect KinectFusion Example");
-
-    bool stop = false;
-    bool renderViz = false;
-    k4a_capture_t capture = NULL;
-    k4a_image_t depth_image = NULL;
-    k4a_image_t undistorted_depth_image = NULL;
-    const int32_t TIMEOUT_IN_MS = 1000;
-    while (!stop && !visualization.wasStopped())
-    {
-        // Get a depth frame
-        stop = true;
-        switch (k4a_device_get_capture(device, &capture, TIMEOUT_IN_MS))
-        {
-            case K4A_WAIT_RESULT_SUCCEEDED:
-                break;
-            case K4A_WAIT_RESULT_TIMEOUT:
-                printf("Timed out waiting for a capture\n");
-                continue;
-                break;
-            case K4A_WAIT_RESULT_FAILED:
-                printf("Failed to read a capture\n");
-                k4a_device_close(device);
-                return 1;
-        }
-
-        // Retrieve depth image
-        depth_image = k4a_capture_get_depth_image(capture);
-        if (depth_image == NULL)
-        {
-            printf("Depth16 None\n");
-            k4a_capture_release(capture);
-            continue;
-        }
-
-        k4a_image_create(K4A_IMAGE_FORMAT_DEPTH16,
-                         pinhole.width,
-                         pinhole.height,
-                         pinhole.width * (int)sizeof(uint16_t),
-                         &undistorted_depth_image);
-        remap(depth_image, lut, undistorted_depth_image, interpolation_type);
-
-        // Create frame from depth buffer
-        uint8_t *buffer = k4a_image_get_buffer(undistorted_depth_image);
-        uint16_t *depth_buffer = reinterpret_cast<uint16_t *>(buffer);
-        UMat undistortedFrame;
-        create_mat_from_buffer<uint16_t>(depth_buffer, width, height,1).copyTo(undistortedFrame);
-
-        if (undistortedFrame.empty())
-        {
-            k4a_image_release(depth_image);
-            k4a_image_release(undistorted_depth_image);
-            k4a_capture_release(capture);
-            continue;
-        }
-
-        // Update KinectFusion
-        if (!kf->update(undistortedFrame))
-        {
-            printf("Reset KinectFusion\n");
-            kf->reset();
-
-            k4a_image_release(depth_image);
-            k4a_image_release(undistorted_depth_image);
-            k4a_capture_release(capture);
-            continue;
-        }els90000000=
-                         {PU:IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII}}}}}}}}}}}}}}}}}
-            printf("update OK\n");
-        }
-
-        std::string name = "/home/benebot/baihao/depth_image/depth_image_2.jpg";
-//        memcpy(k4a_image_get_buffer(color_image),&mat.ptr<cv::Vec4b>(0)[0], mat.rows*mat.cols  *sizeof(cv::Vec4b));
-//        Mat cv_rgb = cv::Mat(k4a_image_get_height_pixels(rgbImage),k4a_image_get_width_pixels(rgbImage),CV_32F,k4a_image_get_buffer(rgbImage), static_cast<size_t>(k4a_image_get_stride_bytes(rgbImage)));
-        cv::imwrite(name, undistortedFrame);
-
-//        if (!kf->update(undistortedFrame))
-//        {
-//            printf("second time update failed\n");
-//            kf->reset();
-//            k4a_image_release(depth_image);
-//            k4a_image_release(undistorted_depth_image);
-//            k4a_capture_release(capture);
-//            continue;
-//        }else{
-//            printf("second time update OK\n");
-//        }
-//        printf("##############################\n");
-        // Retrieve rendered TSDF
-        UMat tsdfRender;
-        kf->render(tsdfRender);
-
-        // Retrieve fused point cloud and normals
-        UMat points;
-        UMat normals;
-        kf->getCloud(points, normals);
-
-        // Show TSDF rendering
-        imshow("AzureKinect KinectFusion Example", tsdfRender);
-
-        // Show fused point cloud and normals
-        if (!points.empty() && !normals.empty() && renderViz)
-        {
-            viz::WCloud cloud(points, viz::Color::white());
-            viz::WCloudNormals cloudNormals(points, normals, 1, 0.01, viz::Color::cyan());
-            visualization.showWidget("cloud", cloud);
-            visualization.showWidget("normals", cloudNormals);
-            visualization.showWidget("worldAxes", viz::WCoordinateSystem());
-            Vec3d volSize = kf->getParams().voxelSize * kf->getParams().volumeDims;
-            visualization.showWidget("cube", viz::WCube(Vec3d::all(0), volSize), kf->getParams().volumePose);
-            visualization.spinOnce(1, true);
-        }
-
-        // Key controls
-        const int32_t key = waitKey(5);
-        if (key == 'r')
-        {
-            printf("Reset KinectFusion\n");
-            kf->reset();
-        }
-        else if (key == 'v')
-        {
-            renderViz = true;
-        }
-        else if (key == 'w')
-        {
-            // Output the fuse-d point cloud from KinectFusion
-            Mat out_points;
-            Mat out_normals;
-            points.copyTo(out_points);
-            normals.copyTo(out_normals);
-
-            printf("Saving fused point cloud into ply file ...\n");
-
-            // Save to the ply file
-#define PLY_START_HEADER "ply"
-#define PLY_END_HEADER "end_header"
-#define PLY_ASCII "format ascii 1.0"
-#define PLY_ELEMENT_VERTEX "element vertex"
-            string output_file_name = "kf_output.ply";
-            ofstream ofs(output_file_name); // text mode first
-            ofs << PLY_START_HEADER << endl;
-            ofs << PLY_ASCII << endl;
-            ofs << PLY_ELEMENT_VERTEX << " " << out_points.rows << endl;
-            ofs << "property float x" << endl;
-            ofs << "property float y" << endl;
-            ofs << "property float z" << endl;
-            ofs << "property float nx" << endl;
-            ofs << "property float ny" << endl;
-            ofs << "property float nz" << endl;
-            ofs << PLY_END_HEADER << endl;
-            ofs.close();
-
-            stringstream ss;
-            for (int i = 0; i < out_points.rows; ++i)
-            {
-                ss << out_points.at<float>(i, 0) << " "
-                   << out_points.at<float>(i, 1) << " "
-                   << out_points.at<float>(i, 2) << " "
-                   << out_normals.at<float>(i, 0) << " "
-                   << out_normals.at<float>(i, 1) << " "
-                   << out_normals.at<float>(i, 2) << endl;
-            }
-            ofstream ofs_text(output_file_name, ios::out | ios::app);
-            ofs_text.write(ss.str().c_str(), (streamsize)ss.str().length());
-        }
-        else if (key == 'q')
-        {
-            stop = true;
-        }
-
-        k4a_image_release(depth_image);
-        k4a_image_release(undistorted_depth_image);
-        k4a_capture_release(capture);
-    }
-
-    k4a_image_release(lut);
-
-    destroyAllWindows();
-//#endif
-
-    k4a_device_close(device);
 
     return 0;
 }
